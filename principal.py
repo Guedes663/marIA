@@ -8,10 +8,10 @@ from pyboy.utils import WindowEvent
 import time
 
 class Ambiente:
-    def __init__(self, nome_arquivo='mario.gb', modo_silencioso=True):
+    def __init__(self, nome_arquivo=r'C:\Users\gabri\OneDrive\Área de Trabalho\marIA\ROM\mario.gb', modo_silencioso=True):
         tipo_janela = "headless" if modo_silencioso else "SDL2"
         self.pyboy = PyBoy(nome_arquivo, window=tipo_janela, debug=modo_silencioso)
-        self.pyboy.set_emulation_speed(100)
+        self.pyboy.set_emulation_speed(1000)
         self.mario = self.pyboy.game_wrapper
         self.mario.start_game()
 
@@ -89,7 +89,7 @@ class Individuo:
         self.fitness = fitness_total + pontos_tempo + movimentos_direita * 5
         return self.fitness
 
-# A divisão é para dar numeros mais manejáveis
+# A divisão é para dar números mais manejáveis
 def avaliar_fitness(individuo, ambiente):
     fitness = individuo.avaliar(ambiente)
     fitness_normalizado = fitness / 10000
@@ -98,14 +98,26 @@ def avaliar_fitness(individuo, ambiente):
 def iniciar_individuos(populacao):
     return [Individuo() for _ in range(populacao)]
 
-def selecao(individuos):
-    # TODO: Implementar seleção por torneio
-    
+def selecao(individuos, k=3):
+    selecionados = []
+    for _ in range(len(individuos) // 2):
+        torneio = random.sample(individuos, k)
+        vencedor = max(torneio, key=lambda x: x.fitness)
+        selecionados.append(vencedor)
+    return selecionados
+
 def cruzamento(pai1, pai2):
-    # TODO: Implementar cruzamento
+    ponto_corte = random.randint(1, len(pai1.acoes) - 1)
+    filho1 = Individuo()
+    filho2 = Individuo()
+    filho1.acoes = pai1.acoes[:ponto_corte] + pai2.acoes[ponto_corte:]
+    filho2.acoes = pai2.acoes[:ponto_corte] + pai1.acoes[ponto_corte:]
+    return filho1, filho2
 
 def mutacao(individuo, taxa_mutacao=0.1):
-    # TODO: Implementar mutação
+    for i in range(len(individuo.acoes)):
+        if random.random() < taxa_mutacao:
+            individuo.acoes[i] = (random.randint(0, 2), random.randint(1, 10))
 
 def imprimir_acoes_individuo(individuo):
     nomes_acoes = ["esquerda", "direita", "A"]
@@ -131,7 +143,7 @@ def algoritmo_genetico(populacao, ambiente, geracoes=100):
         for filho in descendentes:
             mutacao(filho)
 
-        populacao = selecionadas + descendentes
+        populacao = selecionadas + descendentes[:len(populacao) - len(selecionadas)]
 
         fitness_atual = max(individuo.fitness for individuo in populacao)
         individuo_atual = max(populacao, key=lambda n: n.fitness)
@@ -147,13 +159,13 @@ def algoritmo_genetico(populacao, ambiente, geracoes=100):
 def rodar_melhor_modelo(ambiente, melhor_individuo):
     while True:
         estado = ambiente.reset()
-        for acao in melhor_individuo.acoes:
-            estado, fitness, tempo_restante, progresso_nivel = ambiente.passo(acao)
+        for acao, duracao in melhor_individuo.acoes:
+            estado, fitness, tempo_restante, progresso_nivel = ambiente.passo(acao, duracao)
 
         print("Loop completado, reiniciando...")
 
 ambiente = Ambiente(modo_silencioso=False)
 populacao = iniciar_individuos(10)
-algoritmo_genetico(populacao, ambiente)
+melhor_individuo = algoritmo_genetico(populacao, ambiente)
 
 # TODO: O que fazer com tamanho dos indivíduos? Podem aumentar ao longo do tempo?
